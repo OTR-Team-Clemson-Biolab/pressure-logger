@@ -71,12 +71,16 @@ def main():
     file_name_entry = ttk.Entry(mainframe)
     file_name_entry.grid(column=0, row=6, columnspan=2)
 
+    open_latest_button = ttk.Button(mainframe, text="Open Current Log")
+    open_latest_button.grid(column=0, row=4, sticky=(tk.W, tk.E), pady=5)
+
     def start_serial():
         '''Starts the serial log.'''
         if not running[0]:
             # if the program isn't already running, start it.
             running[0] = True
             logging_status.configure(text="Logging status: Active")
+            open_latest_button.configure(state='disabled')
             # start reading the serial port in a new thread so the GUI doesn't lock up.
             # daemon=True means the thread will exit when the main thread exits.
             thread[0] = threading.Thread(target=readserial, args=('COM3', 9600, running, current_pressure, file_name_entry), daemon=True)
@@ -91,29 +95,30 @@ def main():
             running[0] = False
             logging_status.configure(text="Logging status: Inactive")
             current_pressure.configure(text="No Pressure Readings")
+            open_latest_button.configure(state='normal')
             # if the running thread doesn't exit in a reasonable amount of time, kill it.
             if thread[0] is not None:
                 thread[0].join()  # Wait for the thread to finish if it hasn't already.
                 thread[0] = None # delete it
     
-    def open_latest_log():
+    def open_latest_log(file_name):
         '''Opens the latest log file.'''
         # open pressure.csv using os
-        os.startfile('pressure.csv')
+        os.startfile(f'{file_name}.csv')
     
     def open_log_folder():
         '''Opens the folder where the log files are stored.'''
         # open the folder where the log files are stored
         os.startfile(os.getcwd())
     
-    def on_entry_click(event):
+    def on_entry_click(_):
         """function that gets called whenever entry is clicked"""
         if file_name_entry.get() == DEFAULT_LOG_NAME:
             file_name_entry.delete(0, "end")  # delete all the text in the entry
             file_name_entry.insert(0, '')  # Insert blank for user input
             file_name_entry.config(foreground='black')
 
-    def on_focusout(event):
+    def on_focusout(_):
         if file_name_entry.get() == '':
             file_name_entry.insert(0, DEFAULT_LOG_NAME)
             file_name_entry.config(foreground='grey')
@@ -127,9 +132,6 @@ def main():
     stop_button = ttk.Button(mainframe, text="Stop Logging", command=stop_serial)
     stop_button.grid(column=1, row=3, sticky=(tk.W, tk.E), pady=5)
 
-    open_latest_button = ttk.Button(mainframe, text="Open Latest Log", command=open_latest_log)
-    open_latest_button.grid(column=0, row=4, sticky=(tk.W, tk.E), pady=5)
-
     open_folder_button = ttk.Button(mainframe, text="Open Logs Folder", command=open_log_folder)
     open_folder_button.grid(column=1, row=4, sticky=(tk.W, tk.E), pady=5)
 
@@ -137,6 +139,8 @@ def main():
     file_name_entry.config(foreground='grey')
     file_name_entry.bind('<FocusIn>', on_entry_click)
     file_name_entry.bind('<FocusOut>', on_focusout)
+
+    open_latest_button.configure(command=lambda: open_latest_log(file_name_entry.get()))
 
     # Make sure the widgets resize nicely
     for child in mainframe.winfo_children():
