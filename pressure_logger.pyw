@@ -42,7 +42,7 @@ def main():
     root.title("Pressure Logger")
     root.geometry('240x260')  # Specify the initial size of the window
 
-    icon_path = Path(os.chdir(sys._MEIPASS), 'icon.ico') if hasattr(sys, '_MEIPASS') else 'icon.ico'
+    icon_path = Path(sys._MEIPASS, 'icon.ico') if hasattr(sys, '_MEIPASS') else 'icon.ico'
     root.iconbitmap(icon_path)
 
     def handler(signum, frame, running):
