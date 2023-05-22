@@ -9,12 +9,18 @@ import os
 import sys
 from pathlib import Path
 
-def write_to_csv(data, datetime):
-    with open('pressure.csv', 'a+', newline='') as csvfile:
+DEFAULT_LOG_NAME = 'Default Log'
+
+def write_to_csv(data, datetime, log_name):
+    with open(f'{log_name}.csv', 'a+', newline='') as csvfile:
         r = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         r.writerow([datetime.strftime('%m/%d/%Y %H:%M:%S:%f')[:-3], data])
 
-def readserial(comport, baudrate, running, current_pressure):
+def readserial(comport, baudrate, running, current_pressure, file_name_entry):
+    log_file_name = file_name_entry.get()
+    if log_file_name == '':
+        log_file_name = DEFAULT_LOG_NAME
+
     ser = serial.Serial(comport, baudrate, timeout=0.5)
     while running[0]:
         
@@ -25,7 +31,7 @@ def readserial(comport, baudrate, running, current_pressure):
         if len(data) != 0:
             print(f'{timestamp} > {data}')
             current_pressure.configure(text=f'Current pressure: {data} Pa')
-            write_to_csv(data, d)
+            write_to_csv(data, d, log_file_name)
 
 def main():
     running = [False]
@@ -34,9 +40,10 @@ def main():
     # user interface
     root = tk.Tk()
     root.title("Pressure Logger")
-    root.geometry('236x192')  # Specify the initial size of the window
+    root.geometry('240x260')  # Specify the initial size of the window
 
-    root.iconbitmap(Path(sys._MEIPASS, 'icon.ico'))
+    icon_path = Path(os.chdir(sys._MEIPASS), 'icon.ico') if hasattr(sys, '_MEIPASS') else 'icon.ico'
+    root.iconbitmap(icon_path)
 
     def handler(signum, frame, running):
         '''Handler for Ctrl-C. Makes the readserial thread stop running.'''
@@ -58,6 +65,12 @@ def main():
     current_pressure = ttk.Label(mainframe, text="No Pressure Readings", padding="2")
     current_pressure.grid(column=0, row=2, columnspan=2)
 
+    file_name_label = ttk.Label(mainframe, text="Log Name:")
+    file_name_label.grid(column=0, row=5, columnspan=2)
+
+    file_name_entry = ttk.Entry(mainframe)
+    file_name_entry.grid(column=0, row=6, columnspan=2)
+
     def start_serial():
         '''Starts the serial log.'''
         if not running[0]:
@@ -66,7 +79,7 @@ def main():
             logging_status.configure(text="Logging status: Active")
             # start reading the serial port in a new thread so the GUI doesn't lock up.
             # daemon=True means the thread will exit when the main thread exits.
-            thread[0] = threading.Thread(target=readserial, args=('COM3', 9600, running, current_pressure), daemon=True)
+            thread[0] = threading.Thread(target=readserial, args=('COM3', 9600, running, current_pressure, file_name_entry), daemon=True)
             # start the thread
             thread[0].start()
 
@@ -92,6 +105,18 @@ def main():
         '''Opens the folder where the log files are stored.'''
         # open the folder where the log files are stored
         os.startfile(os.getcwd())
+    
+    def on_entry_click(event):
+        """function that gets called whenever entry is clicked"""
+        if file_name_entry.get() == DEFAULT_LOG_NAME:
+            file_name_entry.delete(0, "end")  # delete all the text in the entry
+            file_name_entry.insert(0, '')  # Insert blank for user input
+            file_name_entry.config(foreground='black')
+
+    def on_focusout(event):
+        if file_name_entry.get() == '':
+            file_name_entry.insert(0, DEFAULT_LOG_NAME)
+            file_name_entry.config(foreground='grey')
 
     # handle control c so that the serial loop doesn't keep running as a ghost process.
     signal.signal(signal.SIGINT, lambda signum, frame: handler(signum, frame, running))
@@ -107,6 +132,11 @@ def main():
 
     open_folder_button = ttk.Button(mainframe, text="Open Logs Folder", command=open_log_folder)
     open_folder_button.grid(column=1, row=4, sticky=(tk.W, tk.E), pady=5)
+
+    file_name_entry.insert(0, DEFAULT_LOG_NAME)
+    file_name_entry.config(foreground='grey')
+    file_name_entry.bind('<FocusIn>', on_entry_click)
+    file_name_entry.bind('<FocusOut>', on_focusout)
 
     # Make sure the widgets resize nicely
     for child in mainframe.winfo_children():
