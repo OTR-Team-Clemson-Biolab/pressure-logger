@@ -1,6 +1,7 @@
 import threading
 import tkinter as tk
 from tkinter import ttk
+from tkinter.messagebox import askyesno
 import csv
 from datetime import datetime
 import signal
@@ -141,6 +142,16 @@ def main():
     file_name_entry.bind('<FocusOut>', on_focusout)
 
     open_latest_button.configure(command=lambda: open_latest_log(file_name_entry.get()))
+
+    def handle_close():
+        if running[0]:
+            answer = askyesno(title='Quit Logging', message="Logging is active! Are you sure you want to exit the program?")
+            if answer:
+                root.destroy()
+        else:
+            root.destroy()
+
+    root.protocol('WM_DELETE_WINDOW', handle_close)  # root is your root window
 
     # Make sure the widgets resize nicely
     for child in mainframe.winfo_children():
