@@ -10,8 +10,30 @@ import os
 import sys
 from pathlib import Path
 from tkinter import StringVar
+import json
 
 DEFAULT_LOG_NAME = ''
+PREFERENCES_FILE_NAME = 'preferences.json'
+DEFAULT_SETTINGS = {
+    'PORT': 'COM9',
+}
+
+def load_settings():
+    # check if preferences file exists
+    if os.path.isfile(PREFERENCES_FILE_NAME):
+        # open preferences file
+        with open(PREFERENCES_FILE_NAME, 'r') as f:
+            # read the preferences file as json
+            settings = json.load(f)
+    else:
+        # if the preferences file does not exist, create it with default settings
+        with open(PREFERENCES_FILE_NAME, 'w') as f:
+            settings = DEFAULT_SETTINGS
+            # write it as a readable multiline json file
+            json.dump(settings, f, indent=2)
+    
+    return settings
+
 
 def write_to_csv(data, datetime, log_name):
     if log_name == DEFAULT_LOG_NAME:
@@ -41,6 +63,8 @@ def readserial(comport, baudrate, running, current_pressure, file_name_entry):
 def main():
     running = [False]
     thread = [None]
+
+    settings = load_settings()
 
     # user interface
     root = tk.Tk()
@@ -85,7 +109,7 @@ def main():
             open_latest_button.configure(state='disabled')
             # start reading the serial port in a new thread so the GUI doesn't lock up.
             # daemon=True means the thread will exit when the main thread exits.
-            thread[0] = threading.Thread(target=readserial, args=('COM9', 9600, running, current_pressure, file_name_entry), daemon=True)
+            thread[0] = threading.Thread(target=readserial, args=(settings['PORT'], 9600, running, current_pressure, file_name_entry), daemon=True)
             # start the thread
             thread[0].start()
 
