@@ -9,10 +9,14 @@ import serial
 import os
 import sys
 from pathlib import Path
+from tkinter import StringVar
 
-DEFAULT_LOG_NAME = 'Default Log'
+DEFAULT_LOG_NAME = ''
 
 def write_to_csv(data, datetime, log_name):
+    if log_name == DEFAULT_LOG_NAME:
+        return
+    
     with open(f'{log_name}.csv', 'a+', newline='') as csvfile:
         r = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         r.writerow([datetime.strftime('%m/%d/%Y %H:%M:%S:%f')[:-3], data])
@@ -41,7 +45,7 @@ def main():
     # user interface
     root = tk.Tk()
     root.title("Pressure Logger")
-    root.geometry('240x260')  # Specify the initial size of the window
+    root.geometry('250x260')  # Specify the initial size of the window
 
     icon_path = Path(sys._MEIPASS, 'icon.ico') if hasattr(sys, '_MEIPASS') else 'icon.ico'
     root.iconbitmap(icon_path)
@@ -68,9 +72,6 @@ def main():
 
     file_name_label = ttk.Label(mainframe, text="Log Name:")
     file_name_label.grid(column=0, row=5, columnspan=2)
-
-    file_name_entry = ttk.Entry(mainframe)
-    file_name_entry.grid(column=0, row=6, columnspan=2)
 
     open_latest_button = ttk.Button(mainframe, text="Open Current Log")
     open_latest_button.grid(column=0, row=4, sticky=(tk.W, tk.E), pady=5)
@@ -111,23 +112,11 @@ def main():
         '''Opens the folder where the log files are stored.'''
         # open the folder where the log files are stored
         os.startfile(os.getcwd())
-    
-    def on_entry_click(_):
-        """function that gets called whenever entry is clicked"""
-        if file_name_entry.get() == DEFAULT_LOG_NAME:
-            file_name_entry.delete(0, "end")  # delete all the text in the entry
-            file_name_entry.insert(0, '')  # Insert blank for user input
-            file_name_entry.config(foreground='black')
-
-    def on_focusout(_):
-        if file_name_entry.get() == '':
-            file_name_entry.insert(0, DEFAULT_LOG_NAME)
-            file_name_entry.config(foreground='grey')
 
     # handle control c so that the serial loop doesn't keep running as a ghost process.
     signal.signal(signal.SIGINT, lambda signum, frame: handler(signum, frame, running))
 
-    start_button = ttk.Button(mainframe, text="Start Logging", command=start_serial)
+    start_button = ttk.Button(mainframe, text="Start Logging", command=start_serial, state='disabled')
     start_button.grid(column=0, row=3, sticky=(tk.W, tk.E), pady=5)
 
     stop_button = ttk.Button(mainframe, text="Stop Logging", command=stop_serial)
@@ -136,10 +125,19 @@ def main():
     open_folder_button = ttk.Button(mainframe, text="Open Logs Folder", command=open_log_folder)
     open_folder_button.grid(column=1, row=4, sticky=(tk.W, tk.E), pady=5)
 
-    file_name_entry.insert(0, DEFAULT_LOG_NAME)
-    file_name_entry.config(foreground='grey')
-    file_name_entry.bind('<FocusIn>', on_entry_click)
-    file_name_entry.bind('<FocusOut>', on_focusout)
+    def log_name_modified_handler(var):
+        '''Handler for when the log name is modified.'''
+        if var.get() == '':
+            start_button.configure(state='disabled')
+        else:
+            start_button.configure(state='normal')
+
+    log_name_var = StringVar()
+    log_name_var.trace("w", lambda name, index, mode, var=log_name_var: log_name_modified_handler(var))
+
+    file_name_entry = ttk.Entry(mainframe, textvariable=log_name_var)
+    file_name_entry.grid(column=0, row=6, columnspan=2)
+    file_name_entry.focus_set()
 
     open_latest_button.configure(command=lambda: open_latest_log(file_name_entry.get()))
 
