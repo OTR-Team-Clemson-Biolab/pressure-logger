@@ -85,7 +85,7 @@ def main():
             open_latest_button.configure(state='disabled')
             # start reading the serial port in a new thread so the GUI doesn't lock up.
             # daemon=True means the thread will exit when the main thread exits.
-            thread[0] = threading.Thread(target=readserial, args=('COM3', 9600, running, current_pressure, file_name_entry), daemon=True)
+            thread[0] = threading.Thread(target=readserial, args=('COM23', 9600, running, current_pressure, file_name_entry), daemon=True)
             # start the thread
             thread[0].start()
 
